@@ -1,8 +1,9 @@
 class ChunkedFileReader {
-  constructor(file, { chunkSize }) {
+  constructor(file, { chunkSize, fileSize = file.size }) {
     this.file = file;
-    this.chunkCount = Math.ceil(file.size / chunkSize);
+    this.chunkCount = Math.ceil(fileSize / chunkSize);
     this.chunkSize = chunkSize;
+    this.fileSize = fileSize;
     this.currentChunk = -1;
 
     this.done = false;
@@ -11,11 +12,11 @@ class ChunkedFileReader {
   nextChunk() {
     this.currentChunk += 1;
 
-    const { currentChunk, chunkSize, file } = this;
+    const { currentChunk, chunkSize, fileSize, file } = this;
     const start = currentChunk * chunkSize;
-    const end = start + chunkSize >= file.size ? file.size : start + chunkSize;
+    const end = start + chunkSize >= fileSize ? fileSize : start + chunkSize;
 
-    this.done = start + chunkSize >= file.size;
+    this.done = start + chunkSize >= fileSize;
 
     return file.slice(start, end).arrayBuffer();
   }
@@ -92,29 +93,67 @@ class SparkJsMD5 {
   }
 }
 
-const runJob = async function (JobType, file) {
-  const md5 = new JobType();
-  const reader = new ChunkedFileReader(file, { chunkSize: 2 * 1024 * 1024 });
+const md5 = async function (Ctor, file, config) {
+  const task = new Ctor();
+  const reader = new ChunkedFileReader(file, config);
 
-  await md5.ready();
+  await task.ready();
   while (!reader.done) {
-    await md5.append(await reader.nextChunk());
+    await task.append(await reader.nextChunk());
   }
 
-  return md5.end();
+  return task.end();
 };
 
 document.getElementById("file").addEventListener("change", async function (e) {
   const file = e.target.files[0];
-
-  const run = async function (Job) {
+  const run = async function (Ctor, fileSize) {
     const start = performance.now();
-    const hash = await runJob(Job, file);
-    console.log(Job.name, { time: performance.now() - start, hash });
+    const hash = await md5(Ctor, file, {
+      chunkSize: 2 * 1024 * 1024,
+      fileSize,
+    });
+    const time = performance.now() - start;
+    console.log(Ctor.name, { time, hash });
+
+    return time;
   };
 
-  await run(WasmJsMD5);
-  await run(WasmWorkerMD5);
-  await run(SparkJsMD5);
-  await run(SparkWorkerMD5);
+  const result = {};
+
+  for (let i = 10; i < 510; i += 10) {
+    const fileSize = i * 1024 * 1024;
+    const exe = (Ctor) => run(Ctor, fileSize);
+
+    console.log(`${i} M`);
+    result[i] = [];
+
+    for (const Ctor of [WasmJsMD5, WasmWorkerMD5, SparkJsMD5, SparkWorkerMD5]) {
+      result[i].push(await exe(Ctor));
+    }
+
+    console.log("============");
+  }
+
+  // for (let i = 50; i < 1024; ) {
+  //   const fileSize = i * 1024 * 1024;
+  //   const exe = (Ctor) => run(Ctor, fileSize);
+
+  //   console.log(`${i} M`);
+  //   result[i] = [];
+
+  //   for (const Ctor of [WasmJsMD5, WasmWorkerMD5, SparkJsMD5, SparkWorkerMD5]) {
+  //     result[i].push(await exe(Ctor));
+  //   }
+
+  //   console.log("============");
+
+  //   if (i < 300) {
+  //     i += 50;
+  //   } else {
+  //     i += 100;
+  //   }
+  // }
+
+  console.log((window.result = result));
 });
