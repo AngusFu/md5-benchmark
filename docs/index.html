@@ -4,11 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <title>MD5 Demo</title>
+    <style>
+      .chart {
+        width: 80vw;
+        height: 80vh;
+        margin: 20px auto;
+      }
+    </style>
   </head>
   <body>
     <input type="file" id="file" />
+    <div id="chart" class="chart"></div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts"></script>
     <script src="https://cdn.jsdelivr.net/npm/hash-wasm"></script>
-    <script src="https://unpkg.com/spark-md5@3.0.1/spark-md5.js"></script>
+    <script src="https://unpkg.com/spark-md5@3.0.2/spark-md5.js"></script>
     <script src="./main.js"></script>
   </body>
 </html>

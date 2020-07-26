@@ -1,4 +1,4 @@
-importScripts("https://unpkg.com/spark-md5@3.0.1/spark-md5.js");
+importScripts("https://unpkg.com/spark-md5@3.0.2/spark-md5.js");
 
 Promise.resolve(new SparkMD5.ArrayBuffer()).then((spark) => {
   self.postMessage("ready");
